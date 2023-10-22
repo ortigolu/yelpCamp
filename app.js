@@ -8,6 +8,8 @@ const mongoose = require("mongoose");
 const methodOverride = require("method-override");
 //Se requiere el modelo de campground para poder utilizarlo
 const Campground = require("./models/campground");
+//Se requiere el modelo de review para poder utilizarlo
+const engine = require("ejs-mate");
 
 //Se conecta a la base de datos y crea una nueva base de datos
 mongoose.connect("mongodb://localhost:27017/yelp-camp", {
@@ -32,6 +34,8 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.urlencoded({ extended: true }));
 //Se utiliza el method-override
 app.use(methodOverride("_method"));
+//Se utiliza el engine
+app.engine("ejs", engine);
 
 //Se crea una ruta
 app.get("/", (req, res) => {
