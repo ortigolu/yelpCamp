@@ -11,11 +11,13 @@ const Campground = require("./models/campground");
 //Se requiere el modelo de catchAsync para poder utilizarlo
 const catchAsync = require("./utils/catchAsync");
 //Se requiere el modelo de campgroundSchema para poder utilizarlo
-const { campgroundSchema } = require("./schemas.js");
+const { campgroundSchema, reviewSchema } = require("./schemas.js");
 //Se requiere el modelo de ExpressError para poder utilizarlo
 const ExpressError = require("./utils/ExpressError");
 //Se requiere el modelo de review para poder utilizarlo
 const engine = require("ejs-mate");
+//Se requiere el modelo de review para poder utilizarlo
+const Review = require("./models/review");
 
 //Se conecta a la base de datos y crea una nueva base de datos
 mongoose.connect("mongodb://localhost:27017/yelp-camp", {
@@ -103,7 +105,10 @@ app.get(
   "/campgrounds/:id",
   catchAsync(async (req, res) => {
     //Se crea una constante que va a ser todos los campamentos
-    const campground = await Campground.findById(req.params.id);
+    const campground = await Campground.findById(req.params.id).populate(
+      "reviews"
+    );
+    // console.log(campground);
     //Se renderiza la pagina de show
     res.render("campgrounds/show", { campground });
   })
@@ -147,6 +152,43 @@ app.delete(
     res.redirect("/campgrounds");
   })
 );
+
+const validateReview = (req, res, next) => {
+  //Se crea una constante que va a ser el resultado de validar los datos
+  const { error } = reviewSchema.validate(req.body);
+  //Si hay un error
+  if (error) {
+    //Se crea una constante que va a ser todos los errores
+    const msg = error.details.map((el) => el.message).join(",");
+    //Se lanza un error
+    throw new ExpressError(msg, 400);
+  } else {
+    //Si no hay error
+    next();
+  }
+};
+
+app.post(
+  "/campgrounds/:id/reviews",
+  validateReview,
+  catchAsync(async (req, res) => {
+    // res.send("It worked");
+    //Se crea una constante que va a ser el campamento
+    const campground = await Campground.findById(req.params.id);
+    //Se crea una constante que va a ser el review
+    const review = new Review(req.body.review);
+    //Se agrega el review al campamento
+    campground.reviews.push(review);
+    //Se guarda el review
+    await review.save();
+    //Se guarda el campamento
+    await campground.save();
+
+    //Se redirecciona a la pagina de show
+    res.redirect(`/campgrounds/${campground._id}`);
+  })
+);
+
 //
 app.all("*", (req, res, next) => {
   //   res.send("404!!!");
