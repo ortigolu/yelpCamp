@@ -189,6 +189,21 @@ app.post(
   })
 );
 
+app.delete(
+  "/campgrounds/:id/reviews/:reviewId",
+  catchAsync(async (req, res) => {
+    // res.send("It worked")
+    //Se crea una constante que va a ser el campamento
+    const { id, reviewId } = req.params;
+    //Se actualiza el campamento
+    await Campground.findByIdAndUpdate(id, { $pull: { reviews: reviewId } });
+    //Se elimina el review
+    await Review.findByIdAndDelete(reviewId);
+    //Se redirecciona a la pagina de show
+    res.redirect(`/campgrounds/${id}`);
+  })
+);
+
 //
 app.all("*", (req, res, next) => {
   //   res.send("404!!!");

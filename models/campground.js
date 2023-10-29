@@ -1,5 +1,6 @@
 //Se requiere mogoose para poder utilizarlo
 const mongoose = require("mongoose");
+const { campgroundSchema } = require("../schemas");
 //Se crea una constante que va a ser el esquema de mongoose
 const Schema = mongoose.Schema;
 
@@ -18,6 +19,21 @@ const CampgroundSchema = new Schema({
       ref: "Review",
     },
   ],
+});
+
+//Se realiza una accion antes de eliminar un documento
+campgroundSchema.post("findOneAndDelete", async function (doc) {
+  //Si hay un documento
+  if (doc) {
+    //Se elimina el documento
+    await Review.deleteMany({
+      //Se crea una constante que va a ser el id del review
+      _id: {
+        //Se crea una constante que va a ser el id del review
+        $in: doc.reviews,
+      },
+    });
+  }
 });
 
 //Se exporta el modulo para poder utilizarlo en otros archivos
