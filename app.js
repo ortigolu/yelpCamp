@@ -4,6 +4,8 @@ const express = require("express");
 const path = require("path");
 //Se requiere mogoose para poder utilizarlo
 const mongoose = require("mongoose");
+const session = require("express-session");
+const flash = require("connect-flash");
 //Se requiere method-override para poder utilizarlo
 const methodOverride = require("method-override");
 //Se requiere el modelo de campground para poder utilizarlo
@@ -18,6 +20,8 @@ const ExpressError = require("./utils/ExpressError");
 const engine = require("ejs-mate");
 //Se requiere el modelo de review para poder utilizarlo
 const Review = require("./models/review");
+const campgrounds = require("./routes/campgrounds");
+const reviews = require("./routes/reviews");
 
 //Se conecta a la base de datos y crea una nueva base de datos
 mongoose.connect("mongodb://localhost:27017/yelp-camp", {
@@ -37,173 +41,50 @@ db.once("open", () => {
 //Luego se crea una constante que va a ser el servidor
 const app = express();
 //Se crea una carpeta publica para que el servidor pueda acceder a ella
+//Se utiliza el engine
+app.engine("ejs", engine);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(express.urlencoded({ extended: true }));
 //Se utiliza el method-override
 app.use(methodOverride("_method"));
 
-const validateCampground = (req, res, next) => {
-  //Se crea una constante que va a ser el resultado de validar los datos
-  const { error } = campgroundSchema.validate(req.body);
-  //Si hay un error
-  if (error) {
-    //Se crea una constante que va a ser todos los errores
-    const msg = error.details.map((el) => el.message).join(",");
-    //Se lanza un error
-    throw new ExpressError(msg, 400);
-  } else {
-    //Si no hay error
-    next();
-  }
+app.use(express.static(path.join(__dirname, "public")));
+
+const sessionConfig = {
+  //Se crea una constante que va a ser el secreto
+  secret: "thisshouldbeabettersecret!",
+  //Se crea una constante que va a ser si se debe resavear
+  resave: false,
+  //Se crea una constante que va a ser si se debe inicializar
+  saveUninitialized: true,
+  //Se crea una constante que va a ser el tiempo de vida de la cookie
+  cookie: {
+    httpOnly: true,
+    expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  },
 };
-//Se utiliza el engine
-app.engine("ejs", engine);
+
+app.use(session(sessionConfig));
+app.use(flash());
+
+app.use((req, res, next) => {
+  res.locals.success = req.flash("success");
+  res.locals.error = req.flash("error");
+  next();
+});
+
+//Se crea una ruta
+app.use("/campgrounds", campgrounds);
+app.use("/campgrounds/:id/reviews", reviews);
+//Se crea una ruta
 
 //Se crea una ruta
 app.get("/", (req, res) => {
   //   res.send("Bienvenido a mi sitio");
   res.render("home");
 });
-
-//Se crea una ruta
-app.get(
-  "/campgrounds",
-  catchAsync(async (req, res) => {
-    //   res.send("Bienvenido a mi sitio");
-    //Se crea una constante que va a ser todos los campamentos
-    const campgrounds = await Campground.find({});
-    //Se renderiza la pagina de campgrounds
-    res.render("campgrounds/index", { campgrounds });
-  })
-);
-
-app.get(
-  "/campgrounds/new",
-  catchAsync(async (req, res) => {
-    //Se renderiza la pagina de new
-    res.render("campgrounds/new");
-  })
-);
-
-app.post(
-  "/campgrounds",
-  validateCampground,
-  catchAsync(async (req, res) => {
-    // if (!req.body.campground)
-    //   throw new ExpressError("Invalid Campground Data", 400);
-    //Se crea una constante que va a ser el campamento
-    const campground = new Campground(req.body.campground);
-    //Se guarda el campamento y se utiliza el await para que espere a que se guarde
-    await campground.save();
-    //Se redirecciona a la pagina de show
-    res.redirect(`/campgrounds/${campground._id}`);
-  })
-);
-
-app.get(
-  "/campgrounds/:id",
-  catchAsync(async (req, res) => {
-    //Se crea una constante que va a ser todos los campamentos
-    const campground = await Campground.findById(req.params.id).populate(
-      "reviews"
-    );
-    // console.log(campground);
-    //Se renderiza la pagina de show
-    res.render("campgrounds/show", { campground });
-  })
-);
-
-app.get(
-  "/campgrounds/:id/edit",
-  catchAsync(async (req, res) => {
-    //Se crea una constante que va a ser todos los campamentos
-    const campground = await Campground.findById(req.params.id);
-    //Se renderiza la pagina de edit
-    res.render("campgrounds/edit", { campground });
-  })
-);
-
-app.put(
-  "/campgrounds/:id",
-  validateCampground,
-  catchAsync(async (req, res) => {
-    //Verificando si funciona
-    //   res.send("It worked");
-    //Se crea una constante que va a ser el campamento
-    const { id } = req.params;
-    //Se actualiza el campamento
-    const campground = await Campground.findByIdAndUpdate(id, {
-      ...req.body.campground,
-    });
-    //Se redirecciona a la pagina de show
-    res.redirect(`/campgrounds/${campground._id}`);
-  })
-);
-
-app.delete(
-  "/campgrounds/:id",
-  catchAsync(async (req, res) => {
-    //Se crea una constante que va a ser el campamento
-    const { id } = req.params;
-    //Se elimina el campamento
-    await Campground.findByIdAndDelete(id);
-    //Se redirecciona a la pagina de campgrounds
-    res.redirect("/campgrounds");
-  })
-);
-
-const validateReview = (req, res, next) => {
-  //Se crea una constante que va a ser el resultado de validar los datos
-  const { error } = reviewSchema.validate(req.body);
-  //Si hay un error
-  if (error) {
-    //Se crea una constante que va a ser todos los errores
-    const msg = error.details.map((el) => el.message).join(",");
-    //Se lanza un error
-    throw new ExpressError(msg, 400);
-  } else {
-    //Si no hay error
-    next();
-  }
-};
-
-app.post(
-  "/campgrounds/:id/reviews",
-  validateReview,
-  catchAsync(async (req, res) => {
-    // res.send("It worked");
-    //Se crea una constante que va a ser el campamento
-    const campground = await Campground.findById(req.params.id);
-    //Se crea una constante que va a ser el review
-    const review = new Review(req.body.review);
-    //Se agrega el review al campamento
-    campground.reviews.push(review);
-    //Se guarda el review
-    await review.save();
-    //Se guarda el campamento
-    await campground.save();
-
-    //Se redirecciona a la pagina de show
-    res.redirect(`/campgrounds/${campground._id}`);
-  })
-);
-
-app.delete(
-  "/campgrounds/:id/reviews/:reviewId",
-  catchAsync(async (req, res) => {
-    // res.send("It worked")
-    //Se crea una constante que va a ser el campamento
-    const { id, reviewId } = req.params;
-    //Se actualiza el campamento
-    await Campground.findByIdAndUpdate(id, { $pull: { reviews: reviewId } });
-    //Se elimina el review
-    await Review.findByIdAndDelete(reviewId);
-    //Se redirecciona a la pagina de show
-    res.redirect(`/campgrounds/${id}`);
-  })
-);
-
 //
 app.all("*", (req, res, next) => {
   //   res.send("404!!!");

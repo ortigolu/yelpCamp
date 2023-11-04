@@ -22,7 +22,7 @@ const CampgroundSchema = new Schema({
 });
 
 //Se realiza una accion antes de eliminar un documento
-campgroundSchema.post("findOneAndDelete", async function (doc) {
+CampgroundSchema.post("findOneAndDelete", async function (doc) {
   //Si hay un documento
   if (doc) {
     //Se elimina el documento
