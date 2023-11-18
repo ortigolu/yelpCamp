@@ -1,3 +1,9 @@
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
+
+console.log(process.env.SECRET);
+
 //Lo primero es requeriri express para utilizarlo
 const express = require("express");
 //Se requiere path para poder utilizarlo
@@ -8,18 +14,18 @@ const session = require("express-session");
 const flash = require("connect-flash");
 //Se requiere method-override para poder utilizarlo
 const methodOverride = require("method-override");
-//Se requiere el modelo de campground para poder utilizarlo
-const Campground = require("./models/campground");
-//Se requiere el modelo de catchAsync para poder utilizarlo
-const catchAsync = require("./utils/catchAsync");
-//Se requiere el modelo de campgroundSchema para poder utilizarlo
-const { campgroundSchema, reviewSchema } = require("./schemas.js");
+//Se requiere passport para poder utilizarlo
+const passport = require("passport");
+//Se requiere passport-local para poder utilizarlo
+const LocalStrategy = require("passport-local");
+const User = require("./models/user");
+
 //Se requiere el modelo de ExpressError para poder utilizarlo
 const ExpressError = require("./utils/ExpressError");
 //Se requiere el modelo de review para poder utilizarlo
 const engine = require("ejs-mate");
 //Se requiere el modelo de review para poder utilizarlo
-const Review = require("./models/review");
+const userRoutes = require("./routes/users");
 const campgrounds = require("./routes/campgrounds");
 const reviews = require("./routes/reviews");
 
@@ -65,20 +71,39 @@ const sessionConfig = {
     maxAge: 1000 * 60 * 60 * 24 * 7,
   },
 };
-
+//Se inicializa session
 app.use(session(sessionConfig));
+//Se inicializa flash
 app.use(flash());
+//Se inicializa passport
+app.use(passport.initialize());
+//Se inicializa passport.session
+app.use(passport.session());
+//Se utiliza passport para que pueda utilizar el modelo de User
+passport.use(new LocalStrategy(User.authenticate()));
+//Se utiliza passport para que pueda utilizar el modelo de User
+passport.serializeUser(User.serializeUser());
+//Se utiliza passport para que pueda utilizar el modelo de User
+passport.deserializeUser(User.deserializeUser());
 
 app.use((req, res, next) => {
+  console.log(req.session);
+  res.locals.currentUser = req.user;
   res.locals.success = req.flash("success");
   res.locals.error = req.flash("error");
   next();
 });
 
+// app.get("/fakeUser", async (req, res) => {
+//   const user = new User({ email: "lucas@gmail.com", username: "lucas" });
+//   const newUser = await User.register(user, "chicken");
+//   res.send(newUser);
+// });
+
 //Se crea una ruta
+app.use("/", userRoutes);
 app.use("/campgrounds", campgrounds);
 app.use("/campgrounds/:id/reviews", reviews);
-//Se crea una ruta
 
 //Se crea una ruta
 app.get("/", (req, res) => {
