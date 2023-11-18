@@ -19,12 +19,13 @@ const passport = require("passport");
 //Se requiere passport-local para poder utilizarlo
 const LocalStrategy = require("passport-local");
 const User = require("./models/user");
-
 //Se requiere el modelo de ExpressError para poder utilizarlo
 const ExpressError = require("./utils/ExpressError");
 //Se requiere el modelo de review para poder utilizarlo
 const engine = require("ejs-mate");
 //Se requiere el modelo de review para poder utilizarlo
+const mongoSanitize = require("express-mongo-sanitize");
+
 const userRoutes = require("./routes/users");
 const campgrounds = require("./routes/campgrounds");
 const reviews = require("./routes/reviews");
@@ -56,8 +57,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride("_method"));
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use(
+  mongoSanitize({
+    replaceWith: "_",
+  })
+);
 
 const sessionConfig = {
+  name: "session",
   //Se crea una constante que va a ser el secreto
   secret: "thisshouldbeabettersecret!",
   //Se crea una constante que va a ser si se debe resavear
@@ -75,6 +82,7 @@ const sessionConfig = {
 app.use(session(sessionConfig));
 //Se inicializa flash
 app.use(flash());
+
 //Se inicializa passport
 app.use(passport.initialize());
 //Se inicializa passport.session
